@@ -1,0 +1,35 @@
+<!--
+Description: entry title content xml:base
+-->
+<feed xmlns="http://www.w3.org/2005/Atom">
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test1</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test2</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test3</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test4</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test5</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test6</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test7</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test8</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test9</a></title>
+</entry>
+<entry>
+  <title type="html" xml:base="http://example.com/test/">Example <a href="test.html">test10</a></title>
+</entry>
+</feed>

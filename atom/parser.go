@@ -39,6 +39,12 @@ type Parser struct {
 
 // Parse parses an xml feed into an atom.Feed
 func (ap *Parser) Parse(feed io.Reader) (*Feed, error) {
+	return ap.ParseNItem(feed, 0)
+}
+
+// ParseNItem parses an xml feed into an atom.Feed, with <=n items.
+// If n == 0, parse all items.
+func (ap *Parser) ParseNItem(feed io.Reader, n int) (*Feed, error) {
 	p := xpp.NewXMLPullParser(feed, false, shared.NewReaderLabel)
 	ap.base = &shared.XMLBase{URIAttrs: atomURIAttrs}
 
@@ -47,10 +53,10 @@ func (ap *Parser) Parse(feed io.Reader) (*Feed, error) {
 		return nil, err
 	}
 
-	return ap.parseRoot(p)
+	return ap.parseRoot(p, n)
 }
 
-func (ap *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
+func (ap *Parser) parseRoot(p *xpp.XMLPullParser, n int) (*Feed, error) {
 	if err := p.Expect(xpp.StartTag, "feed"); err != nil {
 		return nil, err
 	}
@@ -65,7 +71,9 @@ func (ap *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 	categories := []*Category{}
 	links := []*Link{}
 	extensions := ext.Extensions{}
+	quit := false
 
+FEED_LOOP:
 	for {
 		tok, err := ap.base.NextTag(p)
 		if err != nil {
@@ -172,12 +180,22 @@ func (ap *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 					return nil, err
 				}
 				atom.Entries = append(atom.Entries, result)
+				if n > 0 && len(atom.Entries) == n {
+					quit = true
+					break FEED_LOOP
+				}
 			} else {
 				err := p.Skip()
 				if err != nil {
 					return nil, err
 				}
 			}
+		}
+	}
+
+	if !quit {
+		if err := p.Expect(xpp.EndTag, "feed"); err != nil {
+			return nil, err
 		}
 	}
 
@@ -199,10 +217,6 @@ func (ap *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 
 	if len(extensions) > 0 {
 		atom.Extensions = extensions
-	}
-
-	if err := p.Expect(xpp.EndTag, "feed"); err != nil {
-		return nil, err
 	}
 
 	return atom, nil
