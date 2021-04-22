@@ -1,0 +1,51 @@
+<!--
+Description: rdf item description 
+-->
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/">
+  <channel rdf:about="http://example.org/index.rdf">
+    <items>
+      <rdf:Seq>
+        <rdf:li resource="http://example.org/entry/1"/>
+        <rdf:li resource="http://example.org/entry/2"/>
+        <rdf:li resource="http://example.org/entry/3"/>
+        <rdf:li resource="http://example.org/entry/4"/>
+        <rdf:li resource="http://example.org/entry/5"/>
+        <rdf:li resource="http://example.org/entry/6"/>
+        <rdf:li resource="http://example.org/entry/7"/>
+        <rdf:li resource="http://example.org/entry/8"/>
+        <rdf:li resource="http://example.org/entry/9"/>
+        <rdf:li resource="http://example.org/entry/10"/>
+      </rdf:Seq>
+    </items>
+  </channel>
+  <item rdf:about="http://example.org/entry/1">
+    <description>Item1 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/2">
+    <description>Item2 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/3">
+    <description>Item3 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/4">
+    <description>Item4 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/5">
+    <description>Item5 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/6">
+    <description>Item6 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/7">
+    <description>Item7 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/8">
+    <description>Item8 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/9">
+    <description>Item9 Description</description>
+  </item>
+  <item rdf:about="http://example.org/entry/10">
+    <description>Item10 Description</description>
+  </item>
+</rdf:RDF>

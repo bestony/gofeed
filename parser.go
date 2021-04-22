@@ -72,11 +72,39 @@ func (f *Parser) Parse(feed io.Reader) (*Feed, error) {
 
 	switch feedType {
 	case FeedTypeAtom:
-		return f.parseAtomFeed(r)
+		return f.parseAtomFeed(r, 0)
 	case FeedTypeRSS:
-		return f.parseRSSFeed(r)
+		return f.parseRSSFeed(r, 0)
 	case FeedTypeJSON:
 		return f.parseJSONFeed(r)
+	}
+
+	return nil, ErrFeedTypeNotDetected
+}
+
+// ParseNItem parses a RSS or Atom feed into
+// the universal gofeed.Feed.  It takes an
+// io.Reader which should return the xml/json content.
+// n should > 0.
+func (f *Parser) ParseNItem(feed io.Reader, n int) (*Feed, error) {
+	// Wrap the feed io.Reader in a io.TeeReader
+	// so we can capture all the bytes read by the
+	// DetectFeedType function and construct a new
+	// reader with those bytes intact for when we
+	// attempt to parse the feeds.
+	var buf bytes.Buffer
+	tee := io.TeeReader(feed, &buf)
+	feedType := DetectFeedType(tee)
+
+	// Glue the read bytes from the detect function
+	// back into a new reader
+	r := io.MultiReader(&buf, feed)
+
+	switch feedType {
+	case FeedTypeAtom:
+		return f.parseAtomFeed(r, n)
+	case FeedTypeRSS:
+		return f.parseRSSFeed(r, n)
 	}
 
 	return nil, ErrFeedTypeNotDetected
@@ -131,16 +159,16 @@ func (f *Parser) ParseString(feed string) (*Feed, error) {
 	return f.Parse(strings.NewReader(feed))
 }
 
-func (f *Parser) parseAtomFeed(feed io.Reader) (*Feed, error) {
-	af, err := f.ap.Parse(feed)
+func (f *Parser) parseAtomFeed(feed io.Reader, n int) (*Feed, error) {
+	af, err := f.ap.ParseNItem(feed, n)
 	if err != nil {
 		return nil, err
 	}
 	return f.atomTrans().Translate(af)
 }
 
-func (f *Parser) parseRSSFeed(feed io.Reader) (*Feed, error) {
-	rf, err := f.rp.Parse(feed)
+func (f *Parser) parseRSSFeed(feed io.Reader, n int) (*Feed, error) {
+	rf, err := f.rp.ParseNItem(feed, n)
 	if err != nil {
 		return nil, err
 	}

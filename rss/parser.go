@@ -17,6 +17,12 @@ type Parser struct {
 
 // Parse parses an xml feed into an rss.Feed
 func (rp *Parser) Parse(feed io.Reader) (*Feed, error) {
+	return rp.ParseNItem(feed, 0)
+}
+
+// ParseNItem parses an xml feed into an rss.Feed with <=n items published.
+// If n == 0, parse all items.
+func (rp *Parser) ParseNItem(feed io.Reader, n int) (*Feed, error) {
 	p := xpp.NewXMLPullParser(feed, false, shared.NewReaderLabel)
 	rp.base = &shared.XMLBase{}
 
@@ -25,10 +31,10 @@ func (rp *Parser) Parse(feed io.Reader) (*Feed, error) {
 		return nil, err
 	}
 
-	return rp.parseRoot(p)
+	return rp.parseRoot(p, n)
 }
 
-func (rp *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
+func (rp *Parser) parseRoot(p *xpp.XMLPullParser, n int) (*Feed, error) {
 	rssErr := p.Expect(xpp.StartTag, "rss")
 	rdfErr := p.Expect(xpp.StartTag, "rdf")
 	if rssErr != nil && rdfErr != nil {
@@ -43,6 +49,7 @@ func (rp *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 
 	ver := rp.parseVersion(p)
 
+FEED_LOOP:
 	for {
 		tok, err := rp.base.NextTag(p)
 		if err != nil {
@@ -50,6 +57,12 @@ func (rp *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 		}
 
 		if tok == xpp.EndTag {
+			rssErr = p.Expect(xpp.EndTag, "rss")
+			rdfErr = p.Expect(xpp.EndTag, "rdf")
+			if rssErr != nil && rdfErr != nil {
+				return nil, fmt.Errorf("%s or %s", rssErr.Error(), rdfErr.Error())
+			}
+
 			break
 		}
 
@@ -64,9 +77,13 @@ func (rp *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 			name := strings.ToLower(p.Name)
 
 			if name == "channel" {
-				channel, err = rp.parseChannel(p)
+				var quit bool
+				channel, quit, err = rp.parseChannel(p, n)
 				if err != nil {
 					return nil, err
+				}
+				if quit {
+					break FEED_LOOP
 				}
 			} else if name == "item" {
 				item, err := rp.parseItem(p)
@@ -74,6 +91,9 @@ func (rp *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 					return nil, err
 				}
 				items = append(items, item)
+				if n > 0 && len(items) == n {
+					break FEED_LOOP
+				}
 			} else if name == "textinput" {
 				textinput, err = rp.parseTextInput(p)
 				if err != nil {
@@ -88,12 +108,6 @@ func (rp *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 				p.Skip()
 			}
 		}
-	}
-
-	rssErr = p.Expect(xpp.EndTag, "rss")
-	rdfErr = p.Expect(xpp.EndTag, "rdf")
-	if rssErr != nil && rdfErr != nil {
-		return nil, fmt.Errorf("%s or %s", rssErr.Error(), rdfErr.Error())
 	}
 
 	if channel == nil {
@@ -117,10 +131,10 @@ func (rp *Parser) parseRoot(p *xpp.XMLPullParser) (*Feed, error) {
 	return channel, nil
 }
 
-func (rp *Parser) parseChannel(p *xpp.XMLPullParser) (rss *Feed, err error) {
+func (rp *Parser) parseChannel(p *xpp.XMLPullParser, n int) (rss *Feed, quit bool, err error) {
 
 	if err = p.Expect(xpp.StartTag, "channel"); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	rss = &Feed{}
@@ -129,10 +143,11 @@ func (rp *Parser) parseChannel(p *xpp.XMLPullParser) (rss *Feed, err error) {
 	extensions := ext.Extensions{}
 	categories := []*Category{}
 
+FEED_LOOP:
 	for {
 		tok, err := rp.base.NextTag(p)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		if tok == xpp.EndTag {
@@ -146,55 +161,55 @@ func (rp *Parser) parseChannel(p *xpp.XMLPullParser) (rss *Feed, err error) {
 			if shared.IsExtension(p) {
 				ext, err := shared.ParseExtension(extensions, p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				extensions = ext
 			} else if name == "title" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Title = result
 			} else if name == "description" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Description = result
 			} else if name == "link" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Link = result
 			} else if name == "language" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Language = result
 			} else if name == "copyright" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Copyright = result
 			} else if name == "managingeditor" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.ManagingEditor = result
 			} else if name == "webmaster" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.WebMaster = result
 			} else if name == "pubdate" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.PubDate = result
 				date, err := shared.ParseDate(result)
@@ -205,7 +220,7 @@ func (rp *Parser) parseChannel(p *xpp.XMLPullParser) (rss *Feed, err error) {
 			} else if name == "lastbuilddate" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.LastBuildDate = result
 				date, err := shared.ParseDate(result)
@@ -216,67 +231,71 @@ func (rp *Parser) parseChannel(p *xpp.XMLPullParser) (rss *Feed, err error) {
 			} else if name == "generator" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Generator = result
 			} else if name == "docs" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Docs = result
 			} else if name == "ttl" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.TTL = result
 			} else if name == "rating" {
 				result, err := shared.ParseText(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Rating = result
 			} else if name == "skiphours" {
 				result, err := rp.parseSkipHours(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.SkipHours = result
 			} else if name == "skipdays" {
 				result, err := rp.parseSkipDays(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.SkipDays = result
 			} else if name == "item" {
 				result, err := rp.parseItem(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Items = append(rss.Items, result)
+				if n > 0 && len(rss.Items) == n {
+					quit = true
+					break FEED_LOOP
+				}
 			} else if name == "cloud" {
 				result, err := rp.parseCloud(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Cloud = result
 			} else if name == "category" {
 				result, err := rp.parseCategory(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				categories = append(categories, result)
 			} else if name == "image" {
 				result, err := rp.parseImage(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.Image = result
 			} else if name == "textinput" {
 				result, err := rp.parseTextInput(p)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				rss.TextInput = result
 			} else {
@@ -287,8 +306,10 @@ func (rp *Parser) parseChannel(p *xpp.XMLPullParser) (rss *Feed, err error) {
 		}
 	}
 
-	if err = p.Expect(xpp.EndTag, "channel"); err != nil {
-		return nil, err
+	if !quit {
+		if err = p.Expect(xpp.EndTag, "channel"); err != nil {
+			return nil, false, err
+		}
 	}
 
 	if len(categories) > 0 {
@@ -307,7 +328,7 @@ func (rp *Parser) parseChannel(p *xpp.XMLPullParser) (rss *Feed, err error) {
 		}
 	}
 
-	return rss, nil
+	return rss, quit, nil
 }
 
 func (rp *Parser) parseItem(p *xpp.XMLPullParser) (item *Item, err error) {
